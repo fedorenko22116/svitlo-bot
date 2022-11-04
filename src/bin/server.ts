@@ -2,10 +2,11 @@ import "reflect-metadata"
 import dotenv from 'dotenv'
 import { DataSource } from 'typeorm'
 import path from 'path'
+import { Application, TelegramBus } from '../lib'
 
 dotenv.config()
 
-export const database = new DataSource({
+const database = new DataSource({
     type: "mongodb",
     host: process.env.DB_HOST,
     port: JSON.parse(process.env.DB_PORT || '27017'),
@@ -18,3 +19,9 @@ export const database = new DataSource({
     entities: [ path.join(__dirname, '../lib/entity/*') ],
     migrations: [ path.join(__dirname, '../lib/migrations/*') ],
 })
+
+const app = new Application([
+    new TelegramBus(process.env.TG_TOKEN || '')
+], database)
+
+app.run()
