@@ -6,9 +6,8 @@ services:
         environment:
             - TG_TOKEN
             - TZ=Europe/Kiev
-#        restart: always
-#        command: [yarn, server]
-        command: [yarn, dev]
+        restart: always
+        command: [yarn, server]
         depends_on:
             - db
 
