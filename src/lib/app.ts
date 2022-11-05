@@ -15,20 +15,11 @@ export class Application {
         this.listenTransportsMenu(connection)
     }
 
-    private async startCronJobs(connection: DataSource) {
+    private startCronJobs(connection: DataSource): void {
         const userRepository = connection.manager.getMongoRepository(User)
         const groupRepository = connection.manager.getMongoRepository(Group)
 
         const scheduler = new Scheduler()
-
-        const notifiedUsers = await userRepository.findBy({ isNotified: true })
-
-        for (const user of notifiedUsers) {
-            const group = await groupRepository.findOneBy({ id: user.groupId })
-
-            // @ts-ignore
-            console.log(scheduler.isDue(group.schedule))
-        }
 
         new CronJob(
             '0 * * * * *',
@@ -59,13 +50,12 @@ export class Application {
         new CronJob(
             '0 0 * * * *',
             async () => {
-                const date = new Date()
                 const notifiedUsers = await userRepository.findBy({ isNotified: true })
 
                 for (const user of notifiedUsers) {
                     const group = await groupRepository.findOneBy({ id: user.groupId })
 
-                    if (group && scheduler.isDue(group.schedule, date)) {
+                    if (group && scheduler.isDue(group.schedule)) {
                         user.isNotified = false
                         await userRepository.save(user)
                     }
@@ -76,7 +66,7 @@ export class Application {
         )
     }
 
-    private listenTransportsMenu(connection: DataSource) {
+    private listenTransportsMenu(connection: DataSource): void {
         const userRepository = connection.manager.getMongoRepository(User)
         const groupRepository = connection.manager.getMongoRepository(Group)
 
@@ -97,7 +87,7 @@ export class Application {
                     )
                 },
                 time: async (channel) => {
-                    await this.askTime(transport, channel)
+                    await Application.askTime(transport, channel)
                 },
                 stop: async (channel) => {
                     let user = await userRepository.findOneBy({ channel })
@@ -115,12 +105,12 @@ export class Application {
                         let group = await groupRepository.findOneBy({ id: user.groupId })
 
                         if (!group) {
-                            return await this.askConfigure(transport, channel)
+                            return await Application.askConfigure(transport, channel)
                         }
 
                         await transport.sendMessage(
                             channel,
-                            `Наступне відключення буде через ${scheduler.whenNext(group.schedule)} хвилини`
+                            `Наступне відключення буде через ${scheduler.whenNext(group.schedule)} хвилин(и)`
                         )
                     } else {
                         await transport.sendMessage(channel, `Спочатку треба пройти налаштування`)
@@ -133,14 +123,14 @@ export class Application {
                         let group = await groupRepository.findOneBy({ id: user.groupId })
 
                         if (!group) {
-                            return await this.askConfigure(transport, channel)
+                            return await Application.askConfigure(transport, channel)
                         }
 
                         const minutes = scheduler.whenPreviousFinished(group.schedule)
 
                         await transport.sendMessage(
                             channel,
-                            `Минуле відключення закінчилося ${minutes} хвилини тому`
+                            `Минуле відключення закінчилося ${minutes} хвилин(и) тому`
                         )
                     } else {
                         await transport.sendMessage(channel, `Спочатку треба пройти налаштування`)
@@ -170,20 +160,18 @@ export class Application {
 
                             await userRepository.save(user)
                             await transport.sendMessage(channel, 'Мої вітання, ви вибрали групу #' +  groupId)
-                            await this.askTime(transport, channel)
+                            await Application.askTime(transport, channel)
                         },
                     },
                     {
                         pattern: /Хочу отримувати повідомлення за (\d+) хвилин/,
                         handler: async (channel, text) => {
-                            const minutes = parseInt(
-                                /Хочу отримувати повідомлення за (\d+) хвилин/.exec(text)?.[1] || '1'
-                            )
+                            const minutes = parseInt(/Хочу отримувати повідомлення за (\d+) хвилин/.exec(text)?.[1] || '1')
 
                             let user = await userRepository.findOneBy({ channel })
 
                             if (!user) {
-                                await this.askConfigure(transport, channel)
+                                await Application.askConfigure(transport, channel)
 
                                 return
                             }
@@ -194,8 +182,7 @@ export class Application {
                             await userRepository.save(user)
                             await transport.sendMessage(
                                 channel,
-                                'Мої вітання, тепер ви почнете отримувати повідомлення за ' + minutes +
-                                ' хвилин до відключення'
+                                'Мої вітання, тепер ви почнете отримувати повідомлення за ' + minutes + ' хвилин до відключення'
                             )
                         },
                     },
@@ -204,15 +191,15 @@ export class Application {
         }
     }
 
-    private async askConfigure(transport: IBus, channel: string): Promise<void> {
+    private static async askConfigure(transport: IBus, channel: string): Promise<void> {
         await transport.sendMessage(channel, `Спочатку треба пройти налаштування`)
     }
 
-    private async askTime(transport: IBus, channel: string): Promise<void> {
+    private static async askTime(transport: IBus, channel: string): Promise<void> {
         await transport.sendOptions(
             channel,
             'Виберіть коли вам було б зручно отримувати повідомлення',
-            [5, 10, 15, 30, 60, 90, 120, 180].map(time => `Хочу отримувати повідомлення за ${time} хвилин до відключення`)
+            [5, 10, 15, 30, 60, 90, 120, 180].map(time => `Хочу отримувати повідомлення за ${time} хвилин(и) до відключення`)
         )
     }
 }

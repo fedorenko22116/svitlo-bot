@@ -13,13 +13,13 @@ export default class Schedule {
     public tue: Array<TimeInterval> = []
 
     @Column(_type => TimeInterval)
-    public wen: Array<TimeInterval> = []
+    public wed: Array<TimeInterval> = []
 
     @Column(_type => TimeInterval)
     public thu: Array<TimeInterval> = []
 
     @Column(_type => TimeInterval)
-    public fr: Array<TimeInterval> = []
+    public fri: Array<TimeInterval> = []
 
     @Column(_type => TimeInterval)
     public sat: Array<TimeInterval> = []

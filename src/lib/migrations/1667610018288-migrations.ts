@@ -14,7 +14,7 @@ export class migrations1667610018288 implements MigrationInterface {
             new TimeInterval(12, 16),
             new TimeInterval(21, 24),
         ]
-        schedule.wen = [
+        schedule.wed = [
             new TimeInterval(0, 1),
             new TimeInterval(6, 10),
             new TimeInterval(15, 19),
@@ -24,7 +24,7 @@ export class migrations1667610018288 implements MigrationInterface {
             new TimeInterval(9, 13),
             new TimeInterval(18, 22),
         ]
-        schedule.fr = [
+        schedule.fri = [
             new TimeInterval(3, 7),
             new TimeInterval(12, 16),
             new TimeInterval(21, 24),
