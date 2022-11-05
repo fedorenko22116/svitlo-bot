@@ -32,7 +32,7 @@ export class Scheduler {
             .filter(interval => interval.from > hour)
             .sort((a, b) => a.from < b.from ? -1 : 1)
 
-        if (intervals) {
+        if (intervals.length) {
             const minutes =
                 (this.getToday().getTime() + (intervals[0].from * 60 * 60 * 1000) - date.getTime()) / 60 / 1000
 
@@ -53,7 +53,7 @@ export class Scheduler {
             .filter(interval => interval.from < hour)
             .sort((a, b) => a.from > b.from ? -1 : 1)
 
-        if (intervals) {
+        if (intervals.length) {
             const minutes =
                 (date.getTime() - (this.getToday().getTime() + (intervals[0].from * 60 * 60 * 1000))) / 60 / 1000
 
@@ -74,7 +74,7 @@ export class Scheduler {
             .filter(interval => interval.to < hour)
             .sort((a, b) => a.to > b.to ? -1 : 1)
 
-        if (intervals) {
+        if (intervals.length) {
             const minutes =
                 (date.getTime() - (this.getToday().getTime() + (intervals[0].to * 60 * 60 * 1000))) / 60 / 1000
 
