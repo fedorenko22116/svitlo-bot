@@ -2,6 +2,7 @@ import { IBus } from './bus'
 import { DataSource } from 'typeorm'
 import { Group, User } from './entity'
 import { Scheduler } from './scheduler'
+import { CronJob } from 'cron'
 
 export class Application {
     public constructor(private transports: Array<IBus>, private database: DataSource) { }
@@ -10,6 +11,62 @@ export class Application {
         const connection = await this.database.initialize()
         await connection.runMigrations()
 
+        this.startCronJobs(connection)
+        this.listenTransportsMenu(connection)
+    }
+
+    private startCronJobs(connection: DataSource) {
+        const userRepository = connection.manager.getMongoRepository(User)
+        const groupRepository = connection.manager.getMongoRepository(Group)
+
+        const scheduler = new Scheduler()
+
+        new CronJob(
+            '0 * * * * *',
+            async () => {
+                const users = await userRepository.findBy({ isNotified: false })
+
+                for (const user of users) {
+                    const group = await groupRepository.findOneBy({ id: user.groupId })
+
+                    if (group) {
+                        const transport = this.transports.find((transport) => transport.name === user.busType)
+
+                        if (transport && scheduler.isDue(group.schedule, user)) {
+                            user.isNotified = true
+                            await userRepository.save(user)
+                            await transport.sendMessage(
+                                user.channel,
+                                `Наступне відключення буде через ${scheduler.whenNext(group.schedule)} хвилини`
+                            )
+                        }
+                    }
+                }
+            },
+            null,
+            true
+        )
+
+        new CronJob(
+            '0 1 * * * *',
+            async () => {
+                const notifiedUsers = await userRepository.findBy({ isNotified: true })
+
+                for (const user of notifiedUsers) {
+                    const group = await groupRepository.findOneBy({ id: user.groupId })
+
+                    if (group && scheduler.isDue(group.schedule)) {
+                        user.isNotified = false
+                        await userRepository.save(user)
+                    }
+                }
+            },
+            null,
+            true
+        )
+    }
+
+    private listenTransportsMenu(connection: DataSource) {
         const userRepository = connection.manager.getMongoRepository(User)
         const groupRepository = connection.manager.getMongoRepository(Group)
 
@@ -48,7 +105,7 @@ export class Application {
                         let group = await groupRepository.findOneBy({ id: user.groupId })
 
                         if (!group) {
-                            return await transport.sendMessage(channel, `Спробуйте пройти наново налаштування`)
+                            return await this.askConfigure(transport, channel)
                         }
 
                         await transport.sendMessage(
@@ -66,12 +123,14 @@ export class Application {
                         let group = await groupRepository.findOneBy({ id: user.groupId })
 
                         if (!group) {
-                            return await transport.sendMessage(channel, `Спробуйте пройти наново налаштування`)
+                            return await this.askConfigure(transport, channel)
                         }
+
+                        const minutes = scheduler.whenPreviousFinished(group.schedule)
 
                         await transport.sendMessage(
                             channel,
-                            `Минуле відключення закінчилося ${scheduler.whenPrevious(group.schedule)} хвилини тому`
+                            `Минуле відключення закінчилося ${minutes} хвилини тому`
                         )
                     } else {
                         await transport.sendMessage(channel, `Спочатку треба пройти налаштування`)
@@ -114,7 +173,7 @@ export class Application {
                             let user = await userRepository.findOneBy({ channel })
 
                             if (!user) {
-                                await transport.sendMessage(channel, `Спочатку треба пройти налаштування`)
+                                await this.askConfigure(transport, channel)
 
                                 return
                             }
@@ -132,6 +191,10 @@ export class Application {
                 ],
             })
         }
+    }
+
+    private async askConfigure(transport: IBus, channel: string): Promise<void> {
+        await transport.sendMessage(channel, `Спочатку треба пройти налаштування`)
     }
 
     private async askTime(transport: IBus, channel: string): Promise<void> {

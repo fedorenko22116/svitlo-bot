@@ -1,15 +1,15 @@
-import { Schedule, TimeInterval } from './entity'
+import { Schedule, TimeInterval, User } from './entity'
 
 export class Scheduler {
-    // public isDue(schedule: Schedule, user: User): boolean {
-    //     const date = new Date()
-    //
-    //     const minutes = date.getMinutes()
-    //     const hour = date.getHours()
-    //     const day = date.getDay()
-    //
-    //
-    // }
+    public isDue(schedule: Schedule, user?: User): boolean {
+        const next = this.whenNext(schedule)
+
+        if (next) {
+            return next - (user?.notifyMinutes || 0) <= 0
+        }
+
+        return false
+    }
 
     /**
      * How many minutes till next tick
@@ -40,12 +40,33 @@ export class Scheduler {
         const day = date.getDay()
 
         const intervals = this.findIntervals(day, schedule)
+            .filter(interval => interval.from < hour)
+            .sort((a, b) => a.from > b.from ? -1 : 1)
+
+        if (intervals) {
+            const minutes =
+                (date.getTime() - (this.getToday().getTime() + (intervals[0].from * 60 * 60 * 1000))) / 60 / 1000
+
+            return parseInt(minutes.toString())
+        }
+
+        return null
+    }
+
+    /**
+     * How many minutes from previous tick
+     */
+    public whenPreviousFinished(schedule: Schedule, date = new Date()): number|null {
+        const hour = date.getHours()
+        const day = date.getDay()
+
+        const intervals = this.findIntervals(day, schedule)
             .filter(interval => interval.to < hour)
             .sort((a, b) => a.to > b.to ? -1 : 1)
 
         if (intervals) {
             const minutes =
-                (date.getTime() - this.getToday().getTime() + (intervals[0].to * 60 * 60 * 1000)) / 60 / 1000
+                (date.getTime() - (this.getToday().getTime() + (intervals[0].to * 60 * 60 * 1000))) / 60 / 1000
 
             return parseInt(minutes.toString())
         }
