@@ -2,7 +2,7 @@ services:
     bot:
         build: .
         volumes:
-            - .:/app
+            - ./src:/app/src
         environment:
             - TG_TOKEN
             - TZ=Europe/Kiev
