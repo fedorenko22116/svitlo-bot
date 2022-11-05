@@ -47,7 +47,7 @@ export class Scheduler {
     /**
      * How many minutes from previous tick
      */
-    public whenPrevious(schedule: Schedule, date = new Date(), inclusive = false): number {
+    public whenPrevious(schedule: Schedule, date = new Date(), inclusive = true): number {
         const hour = date.getHours()
         const day = date.getDay()
 
@@ -70,7 +70,7 @@ export class Scheduler {
     /**
      * How many minutes from previous tick finished
      */
-    public whenPreviousFinished(schedule: Schedule, date = new Date(), inclusive = false): number {
+    public whenPreviousFinished(schedule: Schedule, date = new Date(), inclusive = true): number {
         const hour = date.getHours()
         const day = date.getDay()
 
