@@ -1,19 +1,30 @@
-import { Entity, PrimaryGeneratedColumn, Column } from "typeorm"
+import { Entity, ObjectIdColumn, Column, ObjectID, Index } from 'typeorm'
 
 @Entity()
-export class User {
-    @PrimaryGeneratedColumn()
-    public id: number | undefined
+@Index(["busType", "channel"], { unique: true })
+export default class User {
+    @ObjectIdColumn()
+    public _id!: ObjectID
 
     @Column()
-    public busType: string | undefined
+    public busType: string
 
     @Column()
-    public channel: string | undefined
+    public channel: string
 
     @Column()
-    public cityId: string | undefined
+    public groupId: number
 
     @Column()
-    public groupId: number | undefined
+    public notifyMinutes: number
+
+    @Column()
+    public isNotified: boolean = false
+
+    public constructor(busType: string, channel: string, groupId: number, notifyMinutes: number = 1) {
+        this.busType = busType
+        this.channel = channel
+        this.groupId = groupId
+        this.notifyMinutes = notifyMinutes
+    }
 }

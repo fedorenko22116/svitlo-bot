@@ -1,0 +1,29 @@
+services:
+    bot:
+        build: .
+        volumes:
+            - .:/app
+        environment:
+            - TG_TOKEN
+            - TZ=Europe/Kiev
+#        restart: always
+#        command: [yarn, server]
+        command: [yarn, dev]
+        depends_on:
+            - db
+
+    db:
+        image: mongo
+        restart: always
+        environment:
+            MONGO_INITDB_DATABASE: app
+
+    mongo-express:
+        image: mongo-express
+        restart: always
+        depends_on:
+            - db
+        ports:
+            - 8081:8081
+        environment:
+            ME_CONFIG_MONGODB_URL: mongodb://db:27017/

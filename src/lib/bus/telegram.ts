@@ -2,6 +2,8 @@ import { IBus, Handlers } from './types'
 import { Telegraf, Markup } from "telegraf"
 
 export class TelegramBus implements IBus {
+    public name: string = "telegram"
+
     private bot: Telegraf
 
     public constructor(token: string) {
@@ -27,11 +29,15 @@ export class TelegramBus implements IBus {
             handlers.next?.(data.chat.id.toString())
         })
 
-        this.bot.hears(handlers.group.pattern, (data) => {
-            let match = handlers.group.pattern.exec(data.message.text)?.[1] || '1'
-
-            handlers.group.handler(data.chat.id.toString(), parseInt(match))
+        this.bot.command('time', (data) => {
+            handlers.time?.(data.chat.id.toString())
         })
+
+        for (const handler of handlers.message) {
+            this.bot.hears(handler.pattern, (data) => {
+                handler.handler(data.chat.id.toString(), data.message.text)
+            })
+        }
     }
 
     public async sendMessage(channel: string, message: string): Promise<void> {

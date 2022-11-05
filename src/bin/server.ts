@@ -10,8 +10,6 @@ const database = new DataSource({
     type: "mongodb",
     host: process.env.DB_HOST,
     port: JSON.parse(process.env.DB_PORT || '27017'),
-    username: process.env.DB_USER,
-    password: process.env.DB_PASS,
     database: process.env.DB_NAME,
     synchronize: true,
     logging: true,
