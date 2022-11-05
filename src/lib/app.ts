@@ -15,11 +15,20 @@ export class Application {
         this.listenTransportsMenu(connection)
     }
 
-    private startCronJobs(connection: DataSource) {
+    private async startCronJobs(connection: DataSource) {
         const userRepository = connection.manager.getMongoRepository(User)
         const groupRepository = connection.manager.getMongoRepository(Group)
 
         const scheduler = new Scheduler()
+
+        const notifiedUsers = await userRepository.findBy({ isNotified: true })
+
+        for (const user of notifiedUsers) {
+            const group = await groupRepository.findOneBy({ id: user.groupId })
+
+            // @ts-ignore
+            console.log(scheduler.isDue(group.schedule))
+        }
 
         new CronJob(
             '0 * * * * *',
@@ -32,7 +41,7 @@ export class Application {
                     if (group) {
                         const transport = this.transports.find((transport) => transport.name === user.busType)
 
-                        if (transport && scheduler.isDue(group.schedule, user)) {
+                        if (transport && scheduler.isDueUser(group.schedule, user)) {
                             user.isNotified = true
                             await userRepository.save(user)
                             await transport.sendMessage(
@@ -48,14 +57,15 @@ export class Application {
         )
 
         new CronJob(
-            '0 1 * * * *',
+            '0 0 * * * *',
             async () => {
+                const date = new Date()
                 const notifiedUsers = await userRepository.findBy({ isNotified: true })
 
                 for (const user of notifiedUsers) {
                     const group = await groupRepository.findOneBy({ id: user.groupId })
 
-                    if (group && scheduler.isDue(group.schedule)) {
+                    if (group && scheduler.isDue(group.schedule, date)) {
                         user.isNotified = false
                         await userRepository.save(user)
                     }
@@ -179,6 +189,7 @@ export class Application {
                             }
 
                             user.notifyMinutes = minutes
+                            user.isNotified = false
 
                             await userRepository.save(user)
                             await transport.sendMessage(
@@ -201,7 +212,7 @@ export class Application {
         await transport.sendOptions(
             channel,
             'Виберіть коли вам було б зручно отримувати повідомлення',
-            [5, 15, 30, 60, 90, 120, 180].map(time => `Хочу отримувати повідомлення за ${time} хвилин до відключення`)
+            [5, 10, 15, 30, 60, 90, 120, 180].map(time => `Хочу отримувати повідомлення за ${time} хвилин до відключення`)
         )
     }
 }

@@ -8,7 +8,7 @@ export class TelegramBus implements IBus {
 
     public constructor(token: string) {
         this.bot = new Telegraf(token)
-        this.bot.use(Telegraf.log())
+        // this.bot.use(Telegraf.log())
         this.bot.launch()
     }
 

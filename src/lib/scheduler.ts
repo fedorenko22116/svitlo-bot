@@ -1,11 +1,21 @@
 import { Schedule, TimeInterval, User } from './entity'
 
 export class Scheduler {
-    public isDue(schedule: Schedule, user?: User): boolean {
+    public isDueUser(schedule: Schedule, user: User): boolean {
         const next = this.whenNext(schedule)
 
         if (next) {
-            return next - (user?.notifyMinutes || 0) <= 0
+            return next - user?.notifyMinutes <= 0
+        }
+
+        return false
+    }
+
+    public isDue(schedule: Schedule, date = new Date()): boolean {
+        const next = this.whenNext(schedule, date)
+
+        if (next) {
+            return next <= 0
         }
 
         return false
