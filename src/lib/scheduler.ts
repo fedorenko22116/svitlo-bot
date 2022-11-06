@@ -12,13 +12,7 @@ export class Scheduler {
     }
 
     public isDue(schedule: Schedule, date = new Date()): boolean {
-        const next = this.whenNext(schedule, date, true)
-
-        if (next) {
-            return next <= 0
-        }
-
-        return false
+        return this.whenNext(schedule, date, true) <= 0
     }
 
     /**
