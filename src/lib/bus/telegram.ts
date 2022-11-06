@@ -41,10 +41,11 @@ export class TelegramBus implements IBus {
     }
 
     public async sendMessage(channel: string, message: string): Promise<void> {
-        await this.bot.telegram.sendMessage(channel, message)
+        await this.bot.telegram.sendMessage(channel, message).catch(console.error)
     }
 
     public async sendOptions(channel: string, message: string, items: Array<string>): Promise<void> {
         await this.bot.telegram.sendMessage(channel, message, Markup.keyboard(items).oneTime().resize())
+            .catch(console.error)
     }
 }
