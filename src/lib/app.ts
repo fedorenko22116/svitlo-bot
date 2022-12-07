@@ -3,6 +3,7 @@ import { DataSource } from 'typeorm'
 import { Group, User } from './entity'
 import { Scheduler } from './scheduler'
 import { CronJob } from 'cron'
+import { formatMinutesUserFriendly } from './formatter'
 
 export class Application {
     public constructor(private transports: Array<IBus>, private database: DataSource) { }
@@ -35,10 +36,7 @@ export class Application {
                         if (transport && scheduler.isDueUser(group.schedule, user)) {
                             user.isNotified = true
                             await userRepository.save(user)
-                            await transport.sendMessage(
-                                user.channel,
-                                `Наступне відключення буде через ${scheduler.whenNext(group.schedule)} хвилини`
-                            )
+                            await Application.showNextDown(transport, user.channel, scheduler.whenNext(group.schedule))
                         }
                     }
                 }
@@ -76,15 +74,8 @@ export class Application {
             transport.listen({
                 start: async (channel) => {
                     const groups = await groupRepository.find()
-                    const ids = groups.map(group => `Моя група #${group.id}`)
 
-                    await transport.sendOptions(
-                        channel,
-                        'Виберіть групу відключень до якої належить Ваша вулиця. ' +
-                        'Детальніше ви можете ознайомитись за офіційним посиланням ДТЕК ' +
-                        'https://www.dtek-kem.com.ua/ua/shutdowns',
-                        ids
-                    )
+                    await Application.askSelectGroup(transport, channel, groups)
                 },
                 time: async (channel) => {
                     await Application.askTime(transport, channel)
@@ -96,7 +87,7 @@ export class Application {
                         await userRepository.remove(user)
                     }
 
-                    await transport.sendMessage(channel, 'Повідомлення відключені успішно')
+                    await Application.showNotificationsStopped(transport, channel)
                 },
                 next: async (channel) => {
                     let user = await userRepository.findOneBy({ channel })
@@ -108,12 +99,9 @@ export class Application {
                             return await Application.askConfigure(transport, channel)
                         }
 
-                        await transport.sendMessage(
-                            channel,
-                            `Наступне відключення буде через ${scheduler.whenNext(group.schedule)} хвилин(и)`
-                        )
+                        await Application.showNextDown(transport, channel, scheduler.whenNext(group.schedule))
                     } else {
-                        await transport.sendMessage(channel, `Спочатку треба пройти налаштування`)
+                        await Application.askConfigure(transport, channel)
                     }
                 },
                 prev: async (channel) => {
@@ -128,12 +116,9 @@ export class Application {
 
                         const minutes = scheduler.whenPreviousFinished(group.schedule)
 
-                        await transport.sendMessage(
-                            channel,
-                            `Минуле відключення закінчилося ${minutes} хвилин(и) тому`
-                        )
+                        await Application.showPreviousDown(transport, channel, minutes)
                     } else {
-                        await transport.sendMessage(channel, `Спочатку треба пройти налаштування`)
+                        await Application.askConfigure(transport, channel)
                     }
                 },
                 message: [
@@ -145,7 +130,7 @@ export class Application {
                             let group = await groupRepository.findOneBy({ id: groupId })
 
                             if (!group) {
-                                await transport.sendMessage(channel, `Нажаль Вашої групи нема у базі`)
+                                await Application.showGroupNotFound(transport, channel)
 
                                 return
                             }
@@ -159,7 +144,7 @@ export class Application {
                             }
 
                             await userRepository.save(user)
-                            await transport.sendMessage(channel, 'Мої вітання, ви вибрали групу #' +  groupId)
+                            await Application.showConfigureGroupFinished(transport, channel, groupId)
                             await Application.askTime(transport, channel)
                         },
                     },
@@ -180,15 +165,57 @@ export class Application {
                             user.isNotified = false
 
                             await userRepository.save(user)
-                            await transport.sendMessage(
-                                channel,
-                                'Мої вітання, тепер ви почнете отримувати повідомлення за ' + minutes + ' хвилин до відключення'
-                            )
+                            await Application.showConfigureFinished(transport, channel, minutes)
                         },
                     },
                 ],
             })
         }
+    }
+
+    private static async showNotificationsStopped(transport: IBus, channel: string): Promise<void> {
+        await transport.sendMessage(channel, 'Повідомлення відключені успішно')
+    }
+
+    private static async showGroupNotFound(transport: IBus, channel: string): Promise<void> {
+        await transport.sendMessage(channel, `Нажаль Вашої групи нема у базі`)
+    }
+
+    private static async showConfigureGroupFinished(transport: IBus, channel: string, groupId: number): Promise<void> {
+        await transport.sendMessage(channel, 'Мої вітання, ви вибрали групу #' +  groupId)
+    }
+
+    private static async showConfigureFinished(transport: IBus, channel: string, minutes: number): Promise<void> {
+        await transport.sendMessage(
+            channel,
+            `Тепер ви почнете отримувати повідомлення за ${formatMinutesUserFriendly(minutes)} до відключення`
+        )
+    }
+
+    private static async showNextDown(transport: IBus, channel: string, minutes: number): Promise<void> {
+        await transport.sendMessage(
+            channel,
+            `Минуле відключення закінчилося ${formatMinutesUserFriendly(minutes)} тому`
+        )
+    }
+
+    private static async showPreviousDown(transport: IBus, channel: string, minutes: number): Promise<void> {
+        await transport.sendMessage(
+            channel,
+            `Минуле відключення закінчилося ${formatMinutesUserFriendly(minutes)} тому`
+        )
+    }
+
+    private static async askSelectGroup(transport: IBus, channel: string, groups: Array<Group>): Promise<void> {
+        const ids = groups.map(group => `Моя група #${group.id}`)
+
+        await transport.sendOptions(
+            channel,
+            'Виберіть групу відключень до якої належить Ваша вулиця. ' +
+            'Детальніше ви можете ознайомитись за офіційним посиланням ДТЕК ' +
+            'https://www.dtek-kem.com.ua/ua/shutdowns',
+            ids
+        )
     }
 
     private static async askConfigure(transport: IBus, channel: string): Promise<void> {
