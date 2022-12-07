@@ -195,7 +195,7 @@ export class Application {
     private static async showNextDown(transport: IBus, channel: string, minutes: number): Promise<void> {
         await transport.sendMessage(
             channel,
-            `Минуле відключення закінчилося ${formatMinutesUserFriendly(minutes)} тому`
+            `Наступне відключення буде через ${formatMinutesUserFriendly(minutes)}`
         )
     }
 
